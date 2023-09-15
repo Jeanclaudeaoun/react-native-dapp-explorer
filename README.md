@@ -11,11 +11,21 @@ npm install react-native-web3view
 ## Usage
 
 ```js
-import { multiply } from 'react-native-web3view';
+import Web3 from 'web3';
+import Web3View from 'react-native-web3view';
 
-// ...
+const web3 = new Web3(window.ethereum);
+const accounts = await web3.eth.getAccounts();
 
-const result = await multiply(3, 7);
+function MyApp() {
+  return (
+    <Web3View
+      provider={web3.currentProvider}
+      address={accounts[0]}
+      url="https://your-dapp-url.com"
+    />
+  );
+}
 ```
 
 ## Contributing

@@ -1,18 +1,20 @@
 import * as React from 'react';
+import { Text, View, StyleSheet } from 'react-native';
+import Web3View from 'react-native-web3view';
 
-import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'react-native-web3view';
+import Web3 from 'web3';
+const web3 = new Web3(window.ethereum);
+const accounts = await web3.eth.getAccounts();
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
-
-  React.useEffect(() => {
-    multiply(3, 7).then(setResult);
-  }, []);
-
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Text style={styles.paragraph}>WebView below:</Text>
+      <Web3View
+        provider={web3.currentProvider}
+        address={accounts[0]}
+        url="https://your-dapp-url.com"
+      />
     </View>
   );
 }
@@ -20,12 +22,15 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: '10px',
+    backgroundColor: '#ecf0f1',
+    padding: 8,
   },
-  box: {
-    width: 60,
-    height: 60,
-    marginVertical: 20,
+  paragraph: {
+    margin: 24,
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
