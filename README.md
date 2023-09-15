@@ -31,7 +31,7 @@ function MyApp() {
 ```
 
 ## original working code
-```
+```js
 import React, { useEffect, useState } from 'react';
 import { WebView } from 'react-native-webview';
 
