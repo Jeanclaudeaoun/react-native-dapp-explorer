@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "react-native-web3view": ["./src/index"]
+      "react-native-dapp-explorer": ["./src/index"]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,

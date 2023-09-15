@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import Web3View from 'react-native-web3view';
+import Web3View from 'react-native-dapp-explorer';
 
 import Web3 from 'web3';
 const web3 = new Web3(window.ethereum);

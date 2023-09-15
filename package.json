@@ -1,5 +1,5 @@
 {
-  "name": "react-native-web3view",
+  "name": "react-native-dapp-explorer",
   "version": "0.1.0",
   "description": "web3 dapp wallet injector webview for react-native",
   "main": "lib/commonjs/index",
@@ -42,14 +42,14 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jeanclaudeaoun/react-native-web3view.git"
+    "url": "git+https://github.com/jeanclaudeaoun/react-native-dapp-explorer.git"
   },
   "author": "jeanclaudeaoun <Jeanclaude.aoun@hotmail.com> (https://github.com/jeanclaudeaoun)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jeanclaudeaoun/react-native-web3view/issues"
+    "url": "https://github.com/jeanclaudeaoun/react-native-dapp-explorer/issues"
   },
-  "homepage": "https://github.com/jeanclaudeaoun/react-native-web3view#readme",
+  "homepage": "https://github.com/jeanclaudeaoun/react-native-dapp-explorer#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
