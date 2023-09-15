@@ -40,7 +40,10 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/jeanclaudeaoun/react-native-web3view",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeanclaudeaoun/react-native-web3view.git"
+  },
   "author": "jeanclaudeaoun <Jeanclaude.aoun@hotmail.com> (https://github.com/jeanclaudeaoun)",
   "license": "MIT",
   "bugs": {
@@ -78,7 +81,7 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-webview":"*"
+    "react-native-webview": "*"
   },
   "engines": {
     "node": ">= 18.0.0"
@@ -156,5 +159,8 @@
         }
       ]
     ]
+  },
+  "directories": {
+    "example": "example"
   }
 }
