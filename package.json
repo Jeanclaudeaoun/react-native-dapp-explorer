@@ -1,6 +1,6 @@
 {
   "name": "react-native-dapp-explorer",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "web3 dapp wallet injector webview for react-native",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -31,9 +31,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "prepack": "bob build",
-    "release": "release-it",
-    "example": "yarn --cwd example",
-    "bootstrap": "yarn example && yarn install"
+    "release": "release-it"
   },
   "keywords": [
     "react-native",
