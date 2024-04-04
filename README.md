@@ -1,4 +1,4 @@
-# react-native-dapp-explorer (⚠️WIP)
+# react-native-dapp-explorer (⚠️Beta)
 
 web3 dapp wallet injector webview for react-native
 
