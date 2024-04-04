@@ -1,6 +1,6 @@
 {
   "name": "react-native-dapp-explorer",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "web3 dapp wallet injector webview for react-native",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
