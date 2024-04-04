@@ -23,8 +23,9 @@ function MyApp() {
   return (
     <Web3View
       provider={web3.currentProvider}
-      address={accounts[0]}
+      chainId={1}
       url="https://your-dapp-url.com"
+      style={{ flex: 1, width: '100%' }}
     />
   );
 }
