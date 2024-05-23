@@ -13,19 +13,35 @@ npm install react-native-dapp-explorer
 ## Usage
 
 ```js
-import Web3 from 'web3';
-import Web3View from 'react-native-dapp-explorer';
-
-const web3 = new Web3(window.ethereum);
-const accounts = await web3.eth.getAccounts();
+import web3wallet from ./web3wallet';
+import { Web3View } from 'react-native-dapp-explorer';
 
 function MyApp() {
+
+  const ref = useRef();
+  web3wallet.on('session_request', async event => {
+      const { topic, params, id } = event
+      const { request } = params
+      const requestParamsMessage = request.params[0]
+    
+      // convert `requestParamsMessage` by using a method like hexToUtf8
+      const message = hexToUtf8(requestParamsMessage)
+    
+      // sign the message
+      const signedMessage = await wallet.signMessage(message)
+    
+      const response = { id, result: signedMessage, jsonrpc: '2.0' }
+    
+      await web3wallet.respondSessionRequest({ topic, response })
+    })
+
   return (
-    <Web3View
-      provider={web3.currentProvider}
+    <Web3InjectedWalletView
+      provider={provider}
       chainId={1}
       url="https://your-dapp-url.com"
       style={{ flex: 1, width: '100%' }}
+      webviewRef={ref}
     />
   );
 }
