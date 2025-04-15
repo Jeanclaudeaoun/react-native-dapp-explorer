@@ -1,26 +1,25 @@
 {
   "compilerOptions": {
-    "target": "es2019",
-    "module": "commonjs",
-    "lib": ["es2019", "dom"],
-    "declaration": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "strict": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "jsx": "react",
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
-    ],
+    "baseUrl": ".",
     "paths": {
-      "react-native-webview": ["./src/types/react-native-webview"]
-    }
+      "react-native-dapp-explorer": ["./src/index"]
+    },
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "esModuleInterop": true,
+    "jsx": "react",
+    "lib": ["es6", "es2017"],
+    "moduleResolution": "node",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "esnext"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "jest.config.js"]
 }

@@ -1,134 +1,102 @@
-import type { Transaction, TransactionSignature } from '@solana/web3.js';
-import type { StyleProp, ViewStyle } from 'react-native';
-import type { WebViewProps } from 'react-native-webview';
+import { WebViewProps } from 'react-native-webview';
+import { Transaction } from '@solana/web3.js';
 
-export interface RPCEndpoint {
-  url: string;
-  weight: number;
-  latency: number;
-  lastCheck: number;
-  isHealthy: boolean;
-}
+export type SolanaCluster = 'mainnet-beta' | 'testnet' | 'devnet';
 
-export interface ConnectionConfig {
-  endpoints: { [cluster: string]: string[] };
-  maxRetries?: number;
-  healthCheckInterval?: number;
-  loadBalancing?: boolean;
-}
+export type ChainType = 'evm' | 'solana';
 
-export interface CacheConfig {
-  maxSize?: number;
-  ttl?: number;
-}
-
-export interface DAppManagerConfig {
-  endpoints: { [cluster: string]: string[] };
-  maxConcurrentRequests?: number;
-  cacheSize?: number;
-  cacheTTL?: number;
-  healthCheckInterval?: number;
-}
-
-export interface AnalyticsEvent {
-  type: string;
+export interface TransactionMetadata {
   timestamp: number;
-  data: any;
-}
-
-export interface DAppMetrics {
-  loadTime: number;
-  transactionCount: number;
-  errorCount: number;
-  lastInteraction: number;
-}
-
-export interface BrowserSettings {
-  clearOnExit: boolean;
-  autoApproveLimit: number;
-  defaultCluster: string;
-  customRpcUrls: Record<string, string>;
-}
-
-export interface RecentTransaction {
-  signature: string;
-  timestamp: number;
-  status: 'success' | 'error';
+  hash: string;
+  chain: ChainType;
+  status: 'pending' | 'success' | 'failed';
   domain: string;
 }
 
-export interface SolanaProvider {
-  getPublicKey: () => Promise<string>;
-  getCluster: () => Promise<string>;
-  signTransaction: (transaction: string) => Promise<string>;
-  signAllTransactions: (transactions: string[]) => Promise<string[]>;
-  signMessage: (message: string | Uint8Array) => Promise<Uint8Array>;
+export interface SecurityRule {
+  type: 'transaction' | 'message' | 'domain';
+  level: 'low' | 'medium' | 'high';
+  pattern: string | RegExp;
+  message: string;
 }
 
-export interface EnhancedWeb3ViewProps extends Omit<WebViewProps, 'source'> {
-  provider?: any;
-  solanaProvider?: SolanaProvider;
+export interface RpcEndpoint {
+  url: string;
+  weight: number;
+  healthCheck: () => Promise<boolean>;
+}
+
+export interface RpcConfig {
+  endpoints: Record<string, RpcEndpoint[]>;
+  timeout?: number;
+  retries?: number;
+}
+
+export interface AnalyticsEvent {
+  type: 'transaction' | 'signature' | 'connection' | 'error';
+  chainType: ChainType;
+  timestamp: number;
+  data: Record<string, any>;
+}
+
+export interface DAppMetadata {
+  name: string;
+  icon?: string;
+  url: string;
+  description?: string;
+  chains: ChainType[];
+}
+
+// Extended provider interfaces
+export interface EnhancedSolanaProvider {
+  getPublicKey(): Promise<string>;
+  getCluster(): Promise<SolanaCluster>;
+  signTransaction(transaction: string): Promise<string>;
+  signAllTransactions(transactions: string[]): Promise<string[]>;
+  signMessage(message: Uint8Array | string): Promise<string>;
+  simulateTransaction?(transaction: Transaction): Promise<boolean>;
+  validateProgram?(programId: string): Promise<boolean>;
+}
+
+export interface EnhancedEthereumProvider {
+  getAddress(): Promise<string>;
+  getChainId(): Promise<number>;
+  signMessage(message: string): Promise<string>;
+  signTypedData(data: any): Promise<string>;
+  sendTransaction(tx: any): Promise<string>;
+  call(request: any, chainId?: number): Promise<any>;
+  estimateGas?(tx: any): Promise<string>;
+  validateContract?(address: string): Promise<boolean>;
+}
+
+// Enhanced component props
+export interface EnhancedWeb3ViewProps extends Omit<WebViewProps, 'source' | 'injectedJavaScript'> {
+  ethProvider?: EnhancedEthereumProvider;
+  solanaProvider?: EnhancedSolanaProvider;
   url: string;
   chainId: number;
-  style?: StyleProp<ViewStyle>;
+  securityConfig?: {
+    maxTransactionSize: number;
+    maxSignatures: number;
+    maxInstructions: number;
+    requireRecentBlockhash: boolean;
+    trustedDomains: string[];
+    customRules?: SecurityRule[];
+  };
+  rpcConfig?: RpcConfig;
+  analytics?: {
+    enabled: boolean;
+    onEvent?: (event: AnalyticsEvent) => void;
+  };
   onChainChanged?: (chainId: number) => void;
-  onAccountsChanged?: (accounts: string[]) => void;
-  onTransactionStart?: (transaction: any) => void;
+  onTransactionStart?: (tx: any) => void;
   onTransactionHash?: (hash: string) => void;
-  onTransactionComplete?: (receipt: any) => void;
-  onSignMessage?: (message: string | Uint8Array) => void;
+  onTransactionComplete?: (hash: string, success: boolean) => void;
+  onSignMessage?: (message: string) => void;
   onSignComplete?: (signature: string) => void;
-  onSolanaTransactionStart?: (transaction: Transaction) => void;
-  onSolanaTransactionComplete?: (signature: TransactionSignature, success: boolean) => void;
-  onSolanaSignMessage?: (message: string | Uint8Array) => void;
+  onSolanaTransactionStart?: (tx: any) => void;
+  onSolanaTransactionComplete?: (signature: string, success: boolean) => void;
+  onSolanaSignMessage?: (message: Uint8Array | string) => void;
   onError?: (error: Error) => void;
-  trustedDomains?: string[];
-  allowedMethods?: string[];
-  customRpcEndpoints?: { [cluster: string]: string[] };
-}
-
-export interface SecurityConfig {
-  maxTransactionSize?: number;
-  maxSignatures?: number;
-  allowedProgramIds?: string[];
-  blockedProgramIds?: string[];
-  maxInstructions?: number;
-  requireRecentBlockhash?: boolean;
-}
-
-export interface NavigationConfig {
-  trustedDomains?: string[];
-  maxHistoryLength?: number;
-  blockExternalNavigation?: boolean;
-  allowedProtocols?: string[];
-}
-
-export interface DeepLinkConfig {
-  schemes: string[];
-  debug?: boolean;
-}
-
-export interface BridgeCallback {
-  resolve: (value: any) => void;
-  reject: (error: Error) => void;
-}
-
-export interface BridgeMessage {
-  id: string;
-  type: string;
-  method?: string;
-  params?: any;
-}
-
-export interface StorageKeys {
-  HISTORY: string;
-  TRUSTED_DOMAINS: string;
-  RECENT_TRANSACTIONS: string;
-  SETTINGS: string;
-}
-
-export interface RequestBatch {
-  requests: any[];
-  resolve: (value: any) => void;
-  reject: (error: Error) => void;
+  onDAppLoaded?: (metadata: DAppMetadata) => void;
 }

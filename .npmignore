@@ -1,0 +1,28 @@
+# Development
+.github/
+.vscode/
+example/
+scripts/
+src/__tests__/
+*.test.ts
+*.test.tsx
+jest.config.js
+tsconfig.json
+tsconfig.build.json
+.eslintrc
+.prettierrc
+.npmignore
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+*.tgz
+.DS_Store
+.env
+coverage/
+.nyc_output/
+
+# Documentation
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md

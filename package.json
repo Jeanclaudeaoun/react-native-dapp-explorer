@@ -1,23 +1,25 @@
 {
   "name": "react-native-dapp-explorer",
-  "version": "0.3.0",
-  "description": "Web3-enabled WebView for React Native wallet apps with EVM and Solana support",
+  "version": "0.1.0",
+  "description": "Web3-enabled WebView component for React Native supporting EVM and Solana wallets",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
-  "types": "lib/typescript/src/index.d.ts",
+  "types": "lib/typescript/index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
   "files": [
     "src",
     "lib",
-    "!**/__tests__"
+    "!lib/**/__tests__"
   ],
   "scripts": {
+    "build": "bob build",
+    "prepare": "bob build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "prepack": "bob build",
-    "release": "release-it",
-    "example": "yarn --cwd example"
+    "clean": "rm -rf lib",
+    "version": "node scripts/version.js",
+    "prepublishOnly": "yarn clean && yarn typecheck && yarn build"
   },
   "keywords": [
     "react-native",
@@ -26,75 +28,38 @@
     "solana",
     "dapp",
     "wallet",
-    "webview"
+    "webview",
+    "metamask",
+    "phantom",
+    "wagmi",
+    "ethers"
   ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.1.2",
-    "@react-native-community/netinfo": "^11.4.1",
-    "@solana/web3.js": "^1.87.6",
-    "bs58": "^5.0.0",
-    "buffer": "^6.0.3",
-    "eventemitter3": "^5.0.1",
-    "lodash": "^4.17.21",
-    "lru-cache": "^11.1.0",
-    "tweetnacl": "^1.0.3"
+    "@ethersproject/abstract-provider": "^5.7.0",
+    "@solana/web3.js": "^1.87.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-native": "^0.72.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "react-native-builder-bob": "^0.20.0",
+    "typescript": "^5.0.0"
   },
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-webview": ">=11.0.0"
+    "react-native-webview": "^13.0.0",
+    "expo": ">=49.0.0"
   },
-  "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
-    "@react-native/eslint-config": "^0.72.2",
-    "@types/jest": "^26.0.23",
-    "@types/react": "^18.0.24",
-    "@types/react-native": "^0.70.6",
-    "@typescript-eslint/eslint-plugin": "^5.37.0",
-    "@typescript-eslint/parser": "^5.37.0",
-    "eslint": "^8.4.1",
-    "jest": "^28.1.1",
-    "prettier": "^2.4.1",
-    "react": "18.2.0",
-    "react-native": "0.72.4",
-    "react-native-builder-bob": "^0.20.0",
-    "release-it": "^15.0.0",
-    "typescript": "^4.8.4"
-  },
-  "resolutions": {
-    "@types/react": "^18.0.24"
-  },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "@react-native",
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": [
-        "error",
-        {
-          "quoteProps": "consistent",
-          "singleQuote": true,
-          "tabWidth": 2,
-          "trailingComma": "es5",
-          "useTabs": false
-        }
-      ]
+  "peerDependenciesMeta": {
+    "expo": {
+      "optional": true
     }
-  },
-  "eslintIgnore": [
-    "node_modules/",
-    "lib/"
-  ],
-  "prettier": {
-    "quoteProps": "consistent",
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "es5",
-    "useTabs": false
   },
   "react-native-builder-bob": {
     "source": "src",
@@ -102,13 +67,7 @@
     "targets": [
       "commonjs",
       "module",
-      [
-        "typescript",
-        {
-          "project": "tsconfig.build.json"
-        }
-      ]
+      ["typescript", { "project": "tsconfig.build.json" }]
     ]
-  },
-  "license": "MIT"
+  }
 }
