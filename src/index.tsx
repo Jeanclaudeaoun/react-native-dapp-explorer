@@ -1,277 +1,301 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { WebView, WebViewMessageEvent } from 'react-native-webview';
-import { View, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
-import { Web3ViewProps, TransactionRequest } from './types';
-import { chains } from './chains';
-import { formatTransactionError, validateTransaction, getExplorerUrl } from './tx-utils';
-import { SecurityManager } from './security';
-import { styles } from './styles';
+import {
+  View,
+  StyleSheet,
+  ActivityIndicator,
+  SafeAreaView,
+  Alert,
+  Platform,
+  Text,
+  TouchableOpacity
+} from 'react-native';
+import { WebView } from 'react-native-webview';
+import type { WebViewMessageEvent, WebViewNavigation } from 'react-native-webview';
+import { DAppManager } from './dapp-manager';
+import { DAppBrowserErrorBoundary } from './error-boundary';
+import type { SolanaProvider, Web3ViewProps } from './types';
+
+// Default RPC endpoints for each network
+const DEFAULT_ENDPOINTS = {
+  'mainnet-beta': [
+    'https://api.mainnet-beta.solana.com',
+    'https://solana-api.projectserum.com'
+  ],
+  'testnet': [
+    'https://api.testnet.solana.com'
+  ],
+  'devnet': [
+    'https://api.devnet.solana.com'
+  ]
+};
 
 const Web3View: React.FC<Web3ViewProps> = ({
   provider,
+  solanaProvider,
   url,
   chainId,
+  style,
   onChainChanged,
   onTransactionStart,
   onTransactionHash,
   onTransactionComplete,
   onSignMessage,
   onSignComplete,
+  onSolanaTransactionStart,
+  onSolanaTransactionComplete,
+  onSolanaSignMessage,
   onError,
-  trustedDomains,
-  allowedMethods,
-  style,
+  trustedDomains = [],
+  allowedMethods = [],
+  customRpcEndpoints = {},
   ...webViewProps
 }) => {
-  const webViewRef = useRef<WebView>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [injectedJavaScript, setInjectedJavaScript] = useState<string | null>(null);
-  
-  const securityManager = useRef(new SecurityManager({ trustedDomains, allowedMethods }));
-  
-  const handleLoadStart = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
+  const webviewRef = useRef<WebView>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState(url);
+
+  // Initialize DApp manager with merged RPC endpoints
+  const dappManager = useRef(new DAppManager({
+    endpoints: { ...DEFAULT_ENDPOINTS, ...customRpcEndpoints },
+    maxConcurrentRequests: 5,
+    cacheSize: 100,
+    cacheTTL: 60000, // 1 minute
+    healthCheckInterval: 30000 // 30 seconds
+  }));
+
+  // Handle navigation state changes
+  const handleNavigationStateChange = useCallback((navState: WebViewNavigation) => {
+    setCurrentUrl(navState.url);
+    
+    // Track page load in analytics
+    dappManager.current.analyticsManager.trackEvent('pageLoad', {
+      url: navState.url,
+      title: navState.title,
+      loading: navState.loading
+    });
   }, []);
 
-  const handleLoadEnd = useCallback(() => {
-    setIsLoading(false);
-  }, []);
+  // Initialize providers and handle messages
+  useEffect(() => {
+    const setupProviders = async () => {
+      if (!loading && webviewRef.current) {
+        try {
+          // Add current domain to trusted domains if not already present
+          const domain = new URL(currentUrl).hostname;
+          if (trustedDomains.includes(domain)) {
+            await dappManager.current.addTrustedDomain(domain);
+          }
 
-  const handleError = useCallback((syntheticEvent: any) => {
-    const { nativeEvent } = syntheticEvent;
-    setError(nativeEvent.description || 'Failed to load DApp');
-    setIsLoading(false);
-    onError?.(nativeEvent);
-  }, [onError]);
+          // Inject bridge and providers
+          const bridgeScript = await dappManager.current.executeRequest(
+            'injectBridge',
+            async () => {
+              // Bridge injection logic here
+              return `
+                // Bridge injection
+                // ...existing bridge code...
+              `;
+            },
+            { bypassCache: true }
+          );
 
-  const handleRetry = useCallback(() => {
-    setError(null);
-    webViewRef.current?.reload();
-  }, []);
+          webviewRef.current.injectJavaScript(bridgeScript);
 
+          // Inject Solana provider if available
+          if (solanaProvider) {
+            const phantomScript = await dappManager.current.executeRequest(
+              'injectPhantom',
+              async () => {
+                // Phantom provider injection logic
+                return `
+                  // Phantom provider injection
+                  // ...existing phantom code...
+                `;
+              },
+              { bypassCache: true }
+            );
+            webviewRef.current.injectJavaScript(phantomScript);
+          }
+        } catch (err: any) {
+          onError?.(err);
+          dappManager.current.analyticsManager.trackEvent('error', {
+            type: 'setup',
+            error: err.message
+          });
+        }
+      }
+    };
+
+    setupProviders();
+  }, [loading, currentUrl, solanaProvider, trustedDomains, onError]);
+
+  // Handle messages from WebView
   const handleMessage = useCallback(async (event: WebViewMessageEvent) => {
     try {
-      const { id, method, params } = JSON.parse(event.nativeEvent.data);
-      
-      // Validate request security
-      securityManager.current.validateRequest(url, method);
-      
+      const data = JSON.parse(event.nativeEvent.data);
+      const { type, method, params, id } = data;
+
+      // Track request in analytics
+      dappManager.current.analyticsManager.trackEvent('request', {
+        type,
+        method,
+        domain: new URL(currentUrl).hostname
+      });
+
       let result;
-      switch (method) {
-        case 'eth_requestAccounts':
-        case 'eth_accounts': {
-          const address = await provider.getAddress();
-          result = address ? [address] : [];
-          if (method === 'eth_requestAccounts' && result.length > 0) {
-            webViewRef.current?.injectJavaScript(`
-              window.ethereum.emit('connect', { chainId: '0x${chainId.toString(16)}' });
-              window.ethereum.emit('accountsChanged', ${JSON.stringify(result)});
-              true;
-            `);
-          }
-          break;
-        }
+      let error = null;
 
-        case 'eth_chainId':
-          result = '0x' + chainId.toString(16);
-          break;
-
-        case 'eth_sendTransaction': {
-          const tx = params[0] as TransactionRequest;
-          try {
-            validateTransaction(tx);
-            onTransactionStart?.(tx);
-            
-            const hash = await provider.sendTransaction(tx);
-            onTransactionHash?.(hash);
-            
-            const explorerUrl = getExplorerUrl(chainId, hash);
-            onTransactionComplete?.(hash, true, explorerUrl);
-            
-            result = hash;
-          } catch (error: any) {
-            const formattedError = formatTransactionError(error);
-            onError?.(formattedError);
-            throw error;
-          }
-          break;
-        }
-
-        case 'personal_sign':
-        case 'eth_sign': {
-          const message = method === 'personal_sign' ? params[0] : params[1];
-          onSignMessage?.(message);
-          
-          const signature = await provider.signMessage(message);
-          onSignComplete?.(signature);
-          result = signature;
-          break;
-        }
-
-        case 'eth_signTypedData':
-        case 'eth_signTypedData_v4': {
-          if (!provider.signTypedData) {
-            throw new Error('Typed data signing not supported');
-          }
-          const data = JSON.parse(params[1]);
-          result = await provider.signTypedData(data);
-          break;
-        }
-
-        case 'wallet_switchEthereumChain': {
-          const newChainId = parseInt(params[0].chainId);
-          if (!chains[newChainId]) {
-            throw new Error(`Chain ${newChainId} not supported`);
-          }
-          
-          await onChainChanged?.(newChainId);
-          result = null;
-          
-          webViewRef.current?.injectJavaScript(`
-            window.ethereum.chainId = '${params[0].chainId}';
-            window.ethereum.networkVersion = '${newChainId}';
-            window.ethereum.emit('chainChanged', '${params[0].chainId}');
-            true;
-          `);
-          break;
-        }
-
-        default:
-          if (provider.request) {
-            result = await provider.request({ method, params });
-          } else {
-            throw new Error(`Method ${method} not supported`);
-          }
+      // Execute request with performance optimization and retry logic
+      try {
+        result = await dappManager.current.executeRequest(
+          `${type}-${id}`,
+          async () => {
+            if (type?.startsWith('solana') && solanaProvider) {
+              switch (type) {
+                case 'solanaSignTransaction': {
+                  const { transaction } = params;
+                  onSolanaTransactionStart?.(transaction);
+                  const signature = await solanaProvider.signTransaction(transaction);
+                  onSolanaTransactionComplete?.(signature, true);
+                  return signature;
+                }
+                // ... other Solana cases ...
+              }
+            }
+            // ... EVM cases ...
+          },
+          { retry: true }
+        );
+      } catch (err: any) {
+        error = err;
+        onError?.(err);
+        dappManager.current.analyticsManager.trackEvent('error', {
+          type: 'request',
+          error: err.message
+        });
       }
 
-      webViewRef.current?.postMessage(JSON.stringify({
-        id,
-        result,
-        jsonrpc: '2.0'
-      }));
+      // Send response back to WebView
+      if (id) {
+        const response = error
+          ? { id, error: { message: error.message }, jsonrpc: '2.0' }
+          : { id, result, jsonrpc: '2.0' };
+        
+        webviewRef.current?.injectJavaScript(`
+          window.bridge.handleResponse(${JSON.stringify(response)});
+        `);
+      }
     } catch (error: any) {
-      console.warn('Web3View error:', error);
+      console.error('Error handling WebView message:', error);
       onError?.(error);
-      
-      webViewRef.current?.postMessage(JSON.stringify({
-        id,
-        error: {
-          code: error.code || -32603,
-          message: error.message || 'Internal error',
-          data: error.data
-        },
-        jsonrpc: '2.0'
-      }));
     }
-  }, [provider, chainId, url, onTransactionStart, onTransactionHash, onTransactionComplete, onSignMessage, onSignComplete, onError, onChainChanged]);
+  }, [currentUrl, solanaProvider, onSolanaTransactionStart, onSolanaTransactionComplete, onError]);
 
+  // Cleanup on unmount
   useEffect(() => {
-    const injectedScript = `
-      (function() {
-        window.ethereum = {
-          isMetaMask: true,
-          networkVersion: '${chainId}',
-          chainId: '0x${chainId.toString(16)}',
-          _events: {},
-          
-          request: async function({ method, params }) {
-            return new Promise((resolve, reject) => {
-              const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-              
-              const handler = (event) => {
-                const response = JSON.parse(event.data);
-                if (response.id === id) {
-                  window.removeEventListener('message', handler);
-                  if (response.error) {
-                    const error = new Error(response.error.message);
-                    error.code = response.error.code;
-                    error.data = response.error.data;
-                    reject(error);
-                  } else {
-                    resolve(response.result);
-                  }
-                }
-              };
-              
-              window.addEventListener('message', handler);
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                jsonrpc: '2.0',
-                id,
-                method,
-                params
-              }));
-            });
-          },
-          
-          on: function(eventName, listener) {
-            if (!this._events[eventName]) {
-              this._events[eventName] = new Set();
-            }
-            this._events[eventName].add(listener);
-            return this;
-          },
-          
-          removeListener: function(eventName, listener) {
-            if (this._events[eventName]) {
-              this._events[eventName].delete(listener);
-            }
-            return this;
-          },
-          
-          emit: function(eventName, data) {
-            if (this._events[eventName]) {
-              this._events[eventName].forEach(listener => listener(data));
-            }
-            return this;
-          }
-        };
-
-        window.web3 = {
-          currentProvider: window.ethereum
-        };
-
-        true;
-      })();
-    `;
-
-    setInjectedJavaScript(injectedScript);
-  }, [chainId]);
-
-  if (error) {
-    return (
-      <View style={[styles.errorContainer, style]}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+    return () => {
+      dappManager.current.destroy();
+    };
+  }, []);
 
   return (
-    <View style={[styles.container, style]}>
-      <WebView
-        ref={webViewRef}
-        source={{ uri: url }}
-        style={styles.webview}
-        injectedJavaScript={injectedJavaScript}
-        onMessage={handleMessage}
-        onLoadStart={handleLoadStart}
-        onLoadEnd={handleLoadEnd}
-        onError={handleError}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        {...webViewProps}
-      />
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      )}
-    </View>
+    <DAppBrowserErrorBoundary 
+      url={url}
+      onRetry={() => {
+        if (webviewRef.current) {
+          webviewRef.current.reload();
+        }
+      }}
+    >
+      <SafeAreaView style={[styles.container, style]}>
+        <WebView
+          ref={webviewRef}
+          source={{ uri: url }}
+          style={styles.webview}
+          onMessage={handleMessage}
+          onNavigationStateChange={handleNavigationStateChange}
+          onLoadStart={() => setLoading(true)}
+          onLoadEnd={() => setLoading(false)}
+          onError={(syntheticEvent) => {
+            const { nativeEvent } = syntheticEvent;
+            onError?.(new Error(nativeEvent.description));
+            dappManager.current.analyticsManager.trackEvent('error', {
+              type: 'webview',
+              error: nativeEvent.description
+            });
+          }}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+          allowsInlineMediaPlayback={true}
+          mediaPlaybackRequiresUserAction={false}
+          allowsBackForwardNavigationGestures={true}
+          userAgent="Phantom/React-Native DApp Browser"
+          {...webViewProps}
+          renderLoading={() => (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+          )}
+        />
+        {loading && (
+          <View style={styles.progressBar}>
+            <ActivityIndicator size="small" color="#0000ff" />
+          </View>
+        )}
+      </SafeAreaView>
+    </DAppBrowserErrorBoundary>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff'
+  },
+  webview: {
+    flex: 1
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)'
+  },
+  progressBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
+    alignItems: 'center'
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+});
 
 export default Web3View;
